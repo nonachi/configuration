@@ -9,4 +9,6 @@
 Убедитесь, что у вас установлен Python 3.x.
 ## Запуск эмулятора
 Запустите эмулятор, указав путь к файлу конфигурации:
-<< python main.py --vfs "путь до zip файла" --log session_log.xml >>
+```
+python main.py --vfs "путь до zip файла" --log session_log.xml
+```
