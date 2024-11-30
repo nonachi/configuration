@@ -1,0 +1,10 @@
+- opcode: 121
+  operand: 5
+- opcode: 121
+  operand: 0
+- opcode: 36
+  operand: 0
+- opcode: 121
+  operand: 0
+- opcode: 113
+  operand: 0
