@@ -1,6 +1,6 @@
 import unittest
 import os
-import zipfile  # Не забывайте импортировать zipfile
+import zipfile  
 from main import load_vfs, list_directory, change_directory, reverse_string, chmod_file, process_command
 
 class TestVirtualShellEmulator(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestVirtualShellEmulator(unittest.TestCase):
     def test_edge_cases(self):
         global current_path
         current_path = "/"  # Устанавливаем корень
-        self.assertEqual(change_directory(".."), "Changed directory to: /")  # Теперь должно работать корректно
+        self.assertEqual(change_directory(".."), "Changed directory to: /")  
 
 
 
