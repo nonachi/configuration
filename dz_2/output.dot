@@ -1,0 +1,7 @@
+// Dependency Graph
+digraph {
+	a0d682825f94329664b38f58067787cef5ccfc31 [label="Added new changes in example.txt"]
+	"543c6696e53412a95511af158680623b484e8d3c" -> a0d682825f94329664b38f58067787cef5ccfc31
+	"543c6696e53412a95511af158680623b484e8d3c" [label="Added new file example.txt"]
+	"4ac357845ed2a856ccfd73fbb9e3f07ccc369272" -> "543c6696e53412a95511af158680623b484e8d3c"
+}
