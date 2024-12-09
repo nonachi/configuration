@@ -1,9 +1,9 @@
 import os
-import zipfile
 import tkinter as tk
 from tkinter import scrolledtext
 from pathlib import Path
 from datetime import datetime
+import xml.etree.ElementTree as ET
 
 # Глобальные переменные для виртуальной файловой системы
 vfs = {}
@@ -12,31 +12,44 @@ current_path = "/"
 # Лог-файл
 log_entries = []
 
+
 def log_action(command, result=""):
     """Логирование действий."""
     timestamp = datetime.now().isoformat()
-    log_entries.append(f"{timestamp} - Command: {command}, Result: {result}")
+    log_entries.append({"timestamp": timestamp, "command": command, "result": result})
 
 
-def save_log(log_path):
-    """Сохранить лог в текстовый файл."""
-    with open(log_path, "w") as f:
-        f.write("\n".join(log_entries))
+def save_log_to_xml(log_path):
+    """Сохранить лог в XML-файл."""
+    root = ET.Element("log")
+    for entry in log_entries:
+        log_entry = ET.SubElement(root, "entry")
+        ET.SubElement(log_entry, "timestamp").text = entry["timestamp"]
+        ET.SubElement(log_entry, "command").text = entry["command"]
+        ET.SubElement(log_entry, "result").text = entry["result"]
+
+    tree = ET.ElementTree(root)
+    tree.write(log_path, encoding="utf-8", xml_declaration=True)
 
 
-def load_vfs(zip_path):
-    """Загрузка виртуальной файловой системы из ZIP-архива."""
+def load_vfs_from_xml(xml_path):
+    """Загрузка виртуальной файловой системы из XML-файла."""
     global vfs, current_path
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        for file_name in z.namelist():
-            if file_name.endswith('/'):
-                vfs[file_name] = {"type": "dir", "permissions": "rwx"}
-            else:
-                vfs[file_name] = {
-                    "type": "file",
-                    "content": z.read(file_name),
-                    "permissions": "rw"
-                }
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+
+    vfs = {}
+    for node in root.findall("file"):
+        file_path = node.find("path").text
+        file_type = node.find("type").text
+        permissions = node.find("permissions").text
+        content = node.find("content").text if file_type == "file" else None
+
+        vfs[file_path] = {
+            "type": file_type,
+            "permissions": permissions,
+            "content": content.encode("utf-8") if content else None,
+        }
 
     # Установим корневую директорию как первую общую папку
     root_dirs = {key.split('/')[0] for key in vfs.keys() if key}
@@ -51,7 +64,6 @@ def load_vfs(zip_path):
     print(f"Current VFS root set to: {current_path}")
 
 
-
 def list_directory():
     """Отображение содержимого текущей директории."""
     global current_path
@@ -64,12 +76,11 @@ def list_directory():
     return "\n".join(entries) if entries else "No files or directories found."
 
 
-
 def change_directory(path):
     global current_path
     if path == "..":
         if current_path == "/":
-            return "Already at root."  # Корректный возврат при попытке выйти из корня
+            return "Already at root."
         current_path = "/".join(current_path.strip("/").split("/")[:-1]) + "/"
         if current_path == "":
             current_path = "/"
@@ -87,6 +98,7 @@ def change_directory(path):
     else:
         return "Directory does not exist."
 
+
 def reverse_string(s):
     reversed_str = s[::-1]
     return f"Reversed: {reversed_str}"
@@ -99,7 +111,6 @@ def chmod_file(filename, mode):
         return f"Changed permissions of {filename} to {mode}."
     else:
         return "Error: File or directory not found."
-
 
 
 def process_command(command):
@@ -162,15 +173,15 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Virtual Shell Emulator")
-    parser.add_argument("--vfs", required=True, help="Path to the virtual filesystem zip")
-    parser.add_argument("--log", required=True, help="Path to save the log file")
+    parser.add_argument("--vfs", required=True, help="Path to the virtual filesystem XML")
+    parser.add_argument("--log", required=True, help="Path to save the log XML")
     args = parser.parse_args()
 
     # Загрузка виртуальной файловой системы
-    load_vfs(args.vfs)
+    load_vfs_from_xml(args.vfs)
 
     # Сохранение лога при выходе
-    app.protocol("WM_DELETE_WINDOW", lambda: (save_log(args.log), app.destroy()))
+    app.protocol("WM_DELETE_WINDOW", lambda: (save_log_to_xml(args.log), app.destroy()))
 
     print("Welcome to the Virtual Shell Emulator!")
     app.mainloop()
