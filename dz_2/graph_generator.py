@@ -1,70 +1,91 @@
-import subprocess
+import os
+import zlib
 from graphviz import Digraph
 
-def get_commits(repository_path, file_hash):
-    """Получение списка коммитов, связанных с файлом."""
-    try:
-        # Запуск git log для получения коммитов
-        result = subprocess.run(
-            ["git", "-C", repository_path, "log", "--pretty=format:%H %s", "--all", "--", file_hash],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        # Обработка вывода git log
-        commits = result.stdout.strip().split("\n")
-        
-        # Парсим только строки с двумя частями (хэш и сообщение)
-        parsed_commits = []
-        for line in commits:
-            if " " in line:
-                commit_hash, message = line.split(" ", 1)
-                parsed_commits.append((commit_hash, message))
 
-        return parsed_commits
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Ошибка при выполнении git log: {e}")
-
-def get_commit_dependencies(repository_path, commit_hash):
-    """Получение родительских коммитов для текущего коммита."""
-    try:
-        result = subprocess.run(
-            ["git", "-C", repository_path, "log", "--pretty=%P", "-n", "1", commit_hash],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        parents = result.stdout.strip().split()
-        return parents if parents else []  # Возвращаем пустой список, если нет родителей
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Ошибка при выполнении git log для коммита {commit_hash}: {e}")
-
-def generate_dependency_graph(repository_path, file_hash):
-    """Создание графа зависимостей на основе коммитов для заданного файла."""
-    commits = get_commits(repository_path, file_hash)
-    graph = Digraph(comment="Dependency Graph", format="dot")
+def read_git_object(repo_path, object_hash):
+    """Чтение и распаковка объекта Git."""
+    object_dir = os.path.join(repo_path, ".git", "objects", object_hash[:2])
+    object_file = os.path.join(object_dir, object_hash[2:])
     
-    # Добавляем узлы для каждого коммита
-    for commit_hash, message in commits:
-        graph.node(commit_hash, label=message)
-        
-        # Получаем родительские коммиты
-        parents = get_commit_dependencies(repository_path, commit_hash)
-        
-        # Добавляем ребра (зависимости) от родителей к текущему коммиту
+    if not os.path.exists(object_file):
+        raise FileNotFoundError(f"Git object {object_hash} not found.")
+    
+    with open(object_file, "rb") as f:
+        compressed_data = f.read()
+    
+    decompressed_data = zlib.decompress(compressed_data)
+    return decompressed_data.decode("utf-8", errors="replace")
+
+
+def parse_commit_object(commit_data):
+    """Парсинг содержимого коммита для извлечения родительских коммитов."""
+    lines = commit_data.split("\n")
+    parents = []
+    message = None
+    for line in lines:
+        if line.startswith("parent "):
+            parents.append(line.split(" ")[1])
+        elif not line.startswith(("tree ", "author ", "committer ")) and line.strip():
+            if message is None:
+                message = line.strip()
+    return parents, message
+
+
+def list_git_objects(repo_path):
+    """Получение списка всех объектов в репозитории."""
+    objects_path = os.path.join(repo_path, ".git", "objects")
+    objects = []
+    
+    for dirpath, _, filenames in os.walk(objects_path):
+        for filename in filenames:
+            if len(filename) == 38:  # Убедимся, что это объект Git (SHA-1 хэш)
+                relative_path = os.path.relpath(os.path.join(dirpath, filename), objects_path)
+                objects.append(relative_path.replace("\\", ""))
+    return objects
+
+
+def analyze_commits(repo_path):
+    """Анализ всех объектов commit в репозитории."""
+    objects = list_git_objects(repo_path)
+    commit_dependencies = {}
+    commit_messages = {}
+    
+    for object_hash in objects:
+        try:
+            data = read_git_object(repo_path, object_hash)
+            if data.startswith("commit "):
+                # Парсим объект коммита
+                parents, message = parse_commit_object(data)
+                commit_dependencies[object_hash] = parents
+                commit_messages[object_hash] = message
+        except Exception as e:
+            # Игнорируем ошибки (например, если объект не является коммитом)
+            continue
+    
+    return commit_dependencies, commit_messages
+
+
+def generate_dependency_graph(commit_dependencies, commit_messages):
+    """Создание графа зависимостей коммитов."""
+    graph = Digraph(comment="Commit Dependency Graph", format="dot")
+    
+    for commit, parents in commit_dependencies.items():
+        graph.node(commit, label=commit_messages.get(commit, "No message")[:50])
         for parent in parents:
-            graph.edge(parent, commit_hash)
+            graph.edge(parent, commit)
     
     return graph.source
 
-# Пример вызова функции
-repository_path = "E:/dz_olesia/dz_2"
-file_hash = "example.txt"
 
-graph_source = generate_dependency_graph(repository_path, file_hash)
+# Пример вызова функций
+repository_path = "E:/dz_olesia/dz_2"  # Путь к репозиторию
+
+commit_dependencies, commit_messages = analyze_commits(repository_path)
+graph_source = generate_dependency_graph(commit_dependencies, commit_messages)
 print(graph_source)
 
-# Запись в файл, если необходимо
+# Запись графа в файл
 output_file_path = "E:/dz_olesia/output.dot"
 with open(output_file_path, "w", encoding="utf-8") as f:
     f.write(graph_source)
