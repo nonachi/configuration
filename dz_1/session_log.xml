@@ -1,5 +1,19 @@
-2024-11-25T22:55:37.815844 - Command: rev penis, Result: Reversed: sinep
-2024-11-25T22:55:46.677034 - Command: ls, Result: file1.txt
+<log>
+    <entry>
+        <timestamp>2024-11-25T22:55:37.815844</timestamp>
+        <command>rev penis</command>
+        <result>Reversed: sinep</result>
+    </entry>
+    <entry>
+        <timestamp>2024-11-25T22:55:46.677034</timestamp>
+        <command>ls</command>
+        <result>file1.txt
 file2.txt
-root
-2024-11-25T22:55:59.011137 - Command: chmod  file1.txt rw, Result: Changed permissions of file1.txt to rw.
+root</result>
+    </entry>
+    <entry>
+        <timestamp>2024-11-25T22:55:59.011137</timestamp>
+        <command>chmod file1.txt rw</command>
+        <result>Changed permissions of file1.txt to rw.</result>
+    </entry>
+</log>
