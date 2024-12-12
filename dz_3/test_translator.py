@@ -7,7 +7,7 @@ class TestConfigTranslator(unittest.TestCase):
     # Тест 1: Проверка правильного преобразования данных
     def test_translate_toml_to_custom(self):
         toml_input = "[section]\nkey = 42"
-        expected_output = "section : {\n  key : 42\n}"
+        expected_output = "var section {\n  key : 42,\n}"
         
         # Преобразуем данные
         result = translate_toml_to_custom(toml_input)
@@ -29,7 +29,7 @@ class TestConfigTranslator(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     def test_write_to_file(self, mock_file):
         toml_input = "[section]\nkey = 42"
-        expected_output = "section : {\n  key : 42\n}"
+        expected_output = "var section {\n  key : 42,\n}"
         
         # Вызовем функцию для записи в файл
         with patch("config_translator.translate_toml_to_custom", return_value=expected_output):
@@ -43,7 +43,10 @@ class TestConfigTranslator(unittest.TestCase):
     # Тест 4: Проверка правильного формата при нескольких секциях
     def test_multiple_sections(self):
         toml_input = "[section]\nkey = 42\n[another_section]\nvalue = 10"
-        expected_output = "section : {\n  key : 42\n}\nanother_section : {\n  value : 10\n}"
+        expected_output = (
+            "var section {\n  key : 42,\n}\n"
+            "var another_section {\n  value : 10,\n}"
+        )
         
         # Преобразуем данные
         result = translate_toml_to_custom(toml_input)
